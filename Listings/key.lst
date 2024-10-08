@@ -1,0 +1,107 @@
+C51 COMPILER V9.60.7.0   KEY                                                               10/08/2024 22:06:55 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE KEY
+OBJECT MODULE PLACED IN .\Objects\key.obj
+COMPILER INVOKED BY: D:\keil v5\C51\BIN\C51.EXE key.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\key.l
+                    -st) TABS(2) OBJECT(.\Objects\key.obj)
+
+line level    source
+
+   1          #include "key.h"
+   2          #include "Ultrasonic.h"
+   3          #include "stdlib.h"
+   4          
+   5          
+   6          sbit Key1 = P1^0;
+   7          sbit Key2 = P0^7;
+   8          sbit Key3 = P0^6;
+   9          sbit Key4 = P0^5;
+  10          sbit Key5 = P0^4;
+  11          sbit Key6 = P0^3;
+  12          
+  13          
+  14          volatile unsigned char start = 0;
+  15          int fire_pos[4]={0,0,0,0};
+  16          int user_push = 0;
+  17          unsigned char rand_pushed = 0;
+  18          
+  19          
+  20          void keyscan(void)
+  21          {
+  22   1        if(Key1==0)
+  23   1        {
+  24   2          delay_ms(5);
+  25   2          if(Key1==0)
+  26   2          {
+  27   3            start = 1;
+  28   3          }
+  29   2          while(Key1==0);
+  30   2        }
+  31   1        
+  32   1        if(Key2==0)
+  33   1        {
+  34   2          delay_ms(50);
+  35   2          while(Key2==0);
+  36   2          delay_ms(50);
+  37   2          if(fire_pos[0] == 1) fire_pos[0] = 0;
+  38   2          else fire_pos[0] = 1;
+  39   2          user_push = 1;
+  40   2        }
+  41   1        
+  42   1          if(Key3==0)
+  43   1        {
+  44   2          delay_ms(50);
+  45   2          while(Key3==0);
+  46   2          delay_ms(50);
+  47   2          if(fire_pos[1] == 1) fire_pos[1] = 0;
+  48   2          else fire_pos[1] = 1;
+  49   2          user_push = 1;
+  50   2        }
+  51   1        
+  52   1          if(Key4==0)
+  53   1        {
+  54   2          delay_ms(50);
+C51 COMPILER V9.60.7.0   KEY                                                               10/08/2024 22:06:55 PAGE 2   
+
+  55   2          while(Key4==0);
+  56   2          delay_ms(50);
+  57   2          if(fire_pos[2] == 1) fire_pos[2] = 0;
+  58   2          else fire_pos[2] = 1;
+  59   2          user_push = 1;
+  60   2        }
+  61   1        
+  62   1        if(Key5==0)
+  63   1        {
+  64   2          delay_ms(50);
+  65   2          while(Key5==0);
+  66   2          delay_ms(50);
+  67   2          if(fire_pos[3] == 1) fire_pos[3] = 0;
+  68   2          else fire_pos[3] = 1;
+  69   2          user_push = 1;
+  70   2        }
+  71   1        
+  72   1        if(Key6==0)
+  73   1        {
+  74   2          delay_ms(50);
+  75   2          while(Key6==0);
+  76   2          delay_ms(50);
+  77   2          if(rand_pushed == 1) rand_pushed = 0;
+  78   2          else rand_pushed = 1;
+  79   2        }
+  80   1      }
+  81          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    236    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

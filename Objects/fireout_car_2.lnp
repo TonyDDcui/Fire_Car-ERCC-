@@ -1,0 +1,7 @@
+".\Objects\main.obj",
+".\Objects\motor.obj",
+".\Objects\ultrasonic.obj",
+".\Objects\key.obj",
+".\Objects\action.obj" 
+TO ".\Objects\fireout_car_2" 
+PRINT(".\Listings\fireout_car_2.m51") RAMSIZE(256) 

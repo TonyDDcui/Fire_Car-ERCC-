@@ -1,0 +1,621 @@
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\keil v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include "ultrasonic.h"
+   2          #include "action.h"
+   3          #include "motor.h"
+   4          #include "key.h"
+   5          #include "stdlib.h"
+   6          
+   7          sbit Fan = P0^0;
+   8          sbit LeftFire = P0^2;
+   9          sbit RightFire = P0^3;
+  10          
+  11          #define Fan_On {Fan = 0;}
+  12          #define Fan_Off {Fan = 1;}
+  13          #define lim_dis 240
+  14          
+  15          int dis_car[3] = {0,0,0};
+  16          int car_road = 0;
+  17          volatile  int time = 0;
+  18          volatile int run_time = 0;
+  19          int sure_step = 0;
+  20          unsigned char task = 0;
+  21          
+  22          unsigned char prevent_time = 0;
+  23          unsigned int left_300 = 0;
+  24          unsigned int right_900 = 0;
+  25          unsigned int pwm_num = 0;
+  26          unsigned int room_2_pwm_num = 0;
+  27          unsigned int left_time=0;
+  28          
+  29          void put_off(int blow_time);
+  30          void get_pos(void);
+  31          int make_sure_dis(void);
+  32          void make_car_road(void);
+  33          void cor_dis(unsigned char dir);
+  34          
+  35          
+  36          /******************主函数***************
+  37          **************实现功能移动灭火**********/
+  38          void main()
+  39          {
+  40   1        LED = 1;//亮灯指示
+  41   1        Timer0Init();//左轮PWM
+  42   1        Timer1Init();//右轮PWM
+  43   1        Ultrasonic_Init();
+  44   1        
+  45   1        while(1)
+  46   1        { 
+  47   2          keyscan();//按键检测
+  48   2          for(sure_step = 0;sure_step<3;sure_step++)
+  49   2          {
+  50   3            get_pos();
+  51   3            dis_car[sure_step] = front_dis;
+  52   3          }
+  53   2          
+  54   2          if(start==1 && make_sure_dis() && user_push == 1)
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 2   
+
+  55   2          {
+  56   3      program_begin:
+  57   3            car_road = fire_pos[0]*4 + fire_pos[1]*3 + fire_pos[2]*2 + fire_pos[3]*0;
+  58   3            do                   
+  59   3            { 
+  60   4              Circulation_wall_right();               
+  61   4            }
+  62   3            while(front_dis > 185);   
+  63   3              
+  64   3            if(fire_pos[3] == 1)  
+  65   3            {
+  66   4              put_off(1500);
+  67   4      
+  68   4              if(car_road == 0) goto only_fire1_is_on_back_home;
+  69   4            }
+  70   3              
+  71   3            car_stop();
+  72   3            
+  73   3            turn_left_90_small();//
+  74   3            car_stop();
+  75   3            
+  76   3            if(car_road != 2)
+  77   3            {
+  78   4                do
+  79   4                {
+  80   5                  Circulation_wall_right(); 
+  81   5                  cor_dis(1);
+  82   5                }
+  83   4                while(front_dis > 210);//180   
+  84   4                
+  85   4                car_stop();
+  86   4                
+  87   4                turn_left_90_small();//左转90°进去一号房间和二号房间的中间过道
+  88   4              
+  89   4                do{Circulation_wall_right();Circulation_wall_right();}while(right_dis<300);
+  90   4                do{Circulation_wall_right();Circulation_wall_right();}while(right_dis<300);
+  91   4                do{Circulation_wall_right();Circulation_wall_right();}while(right_dis<300);
+  92   4                
+  93   4                i=0;
+  94   4                do{forward();}while(i<54);
+  95   4                
+  96   4                turn_right_90();//右转90°进入4街道
+  97   4                car_stop();
+  98   4                
+  99   4                do
+ 100   4                {
+ 101   5                  forward();
+ 102   5                  get_pos();
+ 103   5                }while(left_dis > 240);
+ 104   4                
+ 105   4                do  
+ 106   4                {
+ 107   5                  Circulation_wall_left();//寻左墙保持18cm
+ 108   5                  cor_dis(0);
+ 109   5                }while(front_dis >230);//180,210-5.20
+ 110   4      
+ 111   4                car_stop(); //停在3火拐角，向西
+ 112   4                
+ 113   4                if(car_road == 3 || car_road == 5)
+ 114   4                {
+ 115   5                  turn_left_90();
+ 116   5                  car_stop();         
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 3   
+
+ 117   5                  put_off(1500);
+ 118   5                } 
+ 119   4                else
+ 120   4                {
+ 121   5                    turn_right_90();//右转90°
+ 122   5                    car_stop();
+ 123   5                    front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 124   5                    front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 125   5                    front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 126   5                    front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 127   5                    
+ 128   5                    do
+ 129   5                    {
+ 130   6                      Circulation_wall_left();
+ 131   6                      cor_dis(0);
+ 132   6                    }while(front_dis >185);//前距离20cm，190-5.20     190可以使用 稍微近一些  
+ 133   5                  
+ 134   5                    car_stop();
+ 135   5                    turn_right_90();
+ 136   5                    car_stop();
+ 137   5      
+ 138   5                    do
+ 139   5                    {
+ 140   6                      Circulation_wall_left();
+ 141   6                      cor_dis(0);
+ 142   6                    }while(front_dis >185);
+ 143   5              
+ 144   5                    car_stop();
+ 145   5                    delay_ms(100);
+ 146   5                    
+ 147   5                    turn_left_90();
+ 148   5                    car_stop();
+ 149   5                    
+ 150   5                    put_off(1500);
+ 151   5                  
+ 152   5                    turn_left_90();
+ 153   5                    car_stop();
+ 154   5                  
+ 155   5                    do
+ 156   5                    {
+ 157   6                      Circulation_wall_right();
+ 158   6                      cor_dis(1);
+ 159   6                    }while(front_dis >210);//170,190-5.20     190可以使用 稍微近一些---------------改  3.24  
+             -195 还是有点近   198
+ 160   5                    car_stop();
+ 161   5                    turn_left_90();
+ 162   5                    car_stop();
+ 163   5                    do
+ 164   5                    {
+ 165   6                      Circulation_wall_right();
+ 166   6                      cor_dis(1);
+ 167   6                    }while(front_dis >185);  //180可以走 稍微远    改  170太近了  -------------------改  3.2
+             -4  175  178有点近   180可但还需要调节//185
+ 168   5                    car_stop();
+ 169   5                    if(car_road == 7 || car_road == 9)  put_off(1500);
+ 170   5                  }
+ 171   4                  turn_left_90(); 
+ 172   4                  goto only_fire_1_fire_9_fire_3_is_on_back_home;
+ 173   4            }
+ 174   3      
+ 175   3            else
+ 176   3            {
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 4   
+
+ 177   4                get_pos();
+ 178   4                i=0;
+ 179   4                do                   //一号房间
+ 180   4                {
+ 181   5                  Circulation_wall_right();
+ 182   5                }
+ 183   4                while(i<=35);
+ 184   4                //为了防止误判，发现一号房间门口 执行两次。因为调试过程中在火焰1处应�
+             -��前方超声测距错误，测成514毫米，实际应为1200毫米
+ 185   4                //，导致满足while(front_dis > 550||left_dis <600)条件，是的单片机本在火焰1误认为�
+             -��一号房间门口，所以写两次
+ 186   4                //希望前方超声测距不要猜测错了。
+ 187   4                    
+ 188   4                delay_ms(100);
+ 189   4                  
+ 190   4                left_dis= Ultrasonic_Get_Left();//左侧检查
+ 191   4                right_dis= Ultrasonic_Get_Right();//右侧检查
+ 192   4                
+ 193   4                do                   //进入一号房间前——寻找右墙
+ 194   4                {
+ 195   5                  Circulation_wall_right();
+ 196   5                  left_dis= Ultrasonic_Get_Left();
+ 197   5                }
+ 198   4                while(front_dis > 560||left_dis <600);  //front_dis=590
+ 199   4                
+ 200   4                car_stop();
+ 201   4                //now position is middle gate of room 1,and next action turn left 
+ 202   4                delay_ms(50);   
+ 203   4                turn_left_90_more_small();
+ 204   4                goto goto_fire_2;
+ 205   4            }
+ 206   3      /////////////////
+ 207   3      //
+ 208   3      //在着火点3位置，准备驶出2#房间，并在3#街道停下来，离墙180毫米停。
+ 209   3      ////////////////////            
+ 210   3                // now potion is cornre 3 of  room 2,next action  walk alone righr wall
+ 211   3      only_fire_1_fire_9_fire_3_is_on_back_home:                        
+ 212   3                  do
+ 213   3                  {
+ 214   4                    Circulation_wall_right();
+ 215   4                  }while(front_dis >410);
+ 216   3                // now potion is cornre 4 of room 2,next action  turn left
+ 217   3                  car_stop();
+ 218   3                  front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 219   3                  front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 220   3                  front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 221   3                  front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 222   3                  do
+ 223   3                  {               
+ 224   4      //             forward();
+ 225   4                    Circulation_wall_right();
+ 226   4                   
+ 227   4                  }while(front_dis >188);  //9.28改
+ 228   3                  car_stop();
+ 229   3                  turn_left_90();
+ 230   3                  car_stop();
+ 231   3                // now potion is  door of room 2,and meanwhile at the street 3,next action   walk alone righr wall
+ 232   3      /////////////           
+ 233   3      //这时小车处于3#大街，巡右墙走，并扫描左墙，稳定发现左墙
+ 234   3      ///////////////
+ 235   3      
+ 236   3                  left_300=0x00;
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 5   
+
+ 237   3                  do
+ 238   3                  {
+ 239   4                    Circulation_wall_right();
+ 240   4                    left_dis= Ultrasonic_Get_Left();
+ 241   4                    
+ 242   4                    if(left_dis<300)
+ 243   4                    {
+ 244   5                      left_300++;
+ 245   5                    }
+ 246   4                    else
+ 247   4                    {
+ 248   5                      left_300=0x00;
+ 249   5                    }
+ 250   4                  }
+ 251   3                  while(left_dis>300||left_300<=3);//front_dis > 580||left_dis <600
+ 252   3                  
+ 253   3                  
+ 254   3                  
+ 255   3      /////////////           
+ 256   3      //这时小车处于3#大街，发现左墙，准备巡左墙走，并在前墙170毫米处停下
+ 257   3      ///////////////           
+ 258   3        
+ 259   3                  do              
+ 260   3                  {
+ 261   4                    Circulation_wall_left();
+ 262   4                  }while(front_dis >180);   //200可以使用   可以调大一些  ------------改210  3.24
+ 263   3                  car_stop();
+ 264   3                  turn_right_90_small();
+ 265   3                  
+ 266   3                  //前往6/9/5号房间            
+ 267   3                  if(car_road == 6 || car_road == 9 || car_road == 5) goto car_room_1;
+ 268   3      /////////////           
+ 269   3      //这时小车处于2#大街尽头，准备巡左墙走，并在前墙170毫米处停下
+ 270   3      ///////////////             
+ 271   3                  do
+ 272   3                  {
+ 273   4                    Circulation_wall_left();
+ 274   4                    if(left_dis > lim_dis) 
+ 275   4                    {
+ 276   5                        do
+ 277   5                        {
+ 278   6                            adjustDirection_1(1350,1350);
+ 279   6                            get_pos();
+ 280   6                        }while(left_dis > lim_dis);
+ 281   5                    }
+ 282   4                  }while(front_dis >180);//原数据180
+ 283   3                  car_stop();
+ 284   3                  
+ 285   3                  turn_right_90_more_small();
+ 286   3                  
+ 287   3                  goto only_fire_9_fire_1_is_on_back_home;
+ 288   3      
+ 289   3      /////////////           
+ 290   3      //这时小车处于1#着火点，准备巡左墙走，并在前墙580毫米处停下，并掉头，为下
+             -次启动做准备
+ 291   3      /////////////// 
+ 292   3      only_fire_9_fire_1_is_on_back_home: 
+ 293   3      
+ 294   3                  do
+ 295   3                  {
+ 296   4                    Circulation_wall_right();   
+ 297   4                  }
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 6   
+
+ 298   3                  while(front_dis > 550);
+ 299   3                  
+ 300   3                  do
+ 301   3                  {
+ 302   4                    Circulation_wall_right();     
+ 303   4                  }
+ 304   3                  while(front_dis > 500); 
+ 305   3                  
+ 306   3                  do
+ 307   3                  {
+ 308   4                    Circulation_wall_right();     
+ 309   4                  }
+ 310   3                  while(front_dis > 450); 
+ 311   3                  
+ 312   3                  do
+ 313   3                  {
+ 314   4                    Circulation_wall_right();     
+ 315   4                  }
+ 316   3                  while(front_dis > 430); 
+ 317   3                              
+ 318   3                  car_stop();
+ 319   3                  while(rand_pushed != 1) keyscan();
+ 320   3                  turn_right_180();
+ 321   3                  make_car_road();
+ 322   3                  goto program_begin;
+ 323   3                  
+ 324   3      car_room_1:
+ 325   3          run_time = 0;
+ 326   3          do
+ 327   3          {
+ 328   4            Circulation_wall_left();
+ 329   4            if(left_dis > lim_dis) 
+ 330   4            {
+ 331   5                do
+ 332   5                {
+ 333   6                    adjustDirection_1(1350,1350);
+ 334   6                    get_pos();
+ 335   6                }while(left_dis > lim_dis);
+ 336   5            }
+ 337   4            else run_time++;
+ 338   4          }while(run_time <= 130);
+ 339   3          
+ 340   3          car_stop();
+ 341   3          turn_right_90_small();
+ 342   3          
+ 343   3          do
+ 344   3          {
+ 345   4            get_pos();
+ 346   4            forward();
+ 347   4            if(front_dis < 240)
+ 348   4            {
+ 349   5              do
+ 350   5              {
+ 351   6                get_pos();
+ 352   6                adjustDirection_1(1700,1300);
+ 353   6              }while(front_dis < 240);
+ 354   5            }
+ 355   4          }while(right_dis > 200);
+ 356   3          
+ 357   3          goto goto_fire_2;
+ 358   3      
+ 359   3            
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 7   
+
+ 360   3      goto_fire_2:                  
+ 361   3              do
+ 362   3              {
+ 363   4                Circulation_wall_right();
+ 364   4              }
+ 365   3              while(front_dis > 220);//改为20-5.19，23-5.20   230  250    230  210合适
+ 366   3              delay_ms(50);//-------------------
+ 367   3            //now position is corner 1 of room 1,and next action turn left
+ 368   3              car_stop();
+ 369   3              turn_left_90();             //左转      
+ 370   3                  
+ 371   3              //now position is corner 1 of room 1,and next action wanlk alone with right wall
+ 372   3              do
+ 373   3              {
+ 374   4                Circulation_wall_right(); //寻右墙 
+ 375   4                cor_dis(1);
+ 376   4              }while(front_dis > 210);//原数据185改160-5.18，19-5.20,21-5.25
+ 377   3      
+ 378   3              put_off(1500);
+ 379   3              
+ 380   3              turn_right_180();//右转有180°不足——已解决
+ 381   3              
+ 382   3              i=0;
+ 383   3              do
+ 384   3              {
+ 385   4                Circulation_wall_left();  //寻左墙
+ 386   4                cor_dis(0);
+ 387   4              }
+ 388   3              while(left_dis < 240 && i < 24);//i原数据为12改为-24，5-18//390
+ 389   3              
+ 390   3              do
+ 391   3              {
+ 392   4                Circulation_wall_left();  //寻左墙 
+ 393   4                cor_dis(0);
+ 394   4              }
+ 395   3              while(front_dis > 200);
+ 396   3              car_stop();
+ 397   3              turn_right_90_small();      
+ 398   3      
+ 399   3              do
+ 400   3              {
+ 401   4                //front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);//卡尔曼滤波
+ 402   4                Circulation_wall_left();//寻左墙   
+ 403   4              }
+ 404   3              while(front_dis > 230);//驶出到1号房间出口1#街区处前墙19cm   23cm合适
+ 405   3              car_stop();
+ 406   3                  
+ 407   3              turn_right_90();//-----------------回家
+ 408   3              
+ 409   3              do
+ 410   3              {
+ 411   4                Circulation_wall_left();  //寻左墙 
+ 412   4                cor_dis(0);
+ 413   4              }
+ 414   3              while(front_dis > 180);//前方20cm处//240
+ 415   3              turn_right_90_more_small();
+ 416   3              goto only_fire_9_fire_1_is_on_back_home;//灭蜡烛1和蜡烛9后回家
+ 417   3              
+ 418   3      
+ 419   3                  
+ 420   3      only_fire1_is_on_back_home: 
+ 421   3              turn_right_180();
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 8   
+
+ 422   3              goto only_fire_9_fire_1_is_on_back_home; 
+ 423   3          }   
+ 424   2        }
+ 425   1      }
+ 426          
+ 427          
+ 428          void put_off(int blow_time)
+ 429          {
+ 430   1          while(time < blow_time)
+ 431   1          {
+ 432   2              car_stop();
+ 433   2              Fan_On;
+ 434   2              car_stop();
+ 435   2              time++;
+ 436   2              delay_ms(1);
+ 437   2          }
+ 438   1          
+ 439   1          Fan_Off;
+ 440   1          time = 0;
+ 441   1      }
+ 442          
+ 443          void get_pos(void)
+ 444          {
+ 445   1        right_dis = Ultrasonic_Get_Right();
+ 446   1        front_dis= kalmanfilter(Ultrasonic_Get_Front(),1);
+ 447   1        left_dis = Ultrasonic_Get_Left();
+ 448   1      }
+ 449          
+ 450          int make_sure_dis(void)
+ 451          {
+ 452   1          if((dis_car[0] + dis_car[1])/2 <= dis_car[2] + 5 && (dis_car[0] + dis_car[1])/2 >= dis_car[2] - 5)  re
+             -turn 1;
+ 453   1          else 
+ 454   1          {
+ 455   2              dis_car[0] = 0;
+ 456   2              dis_car[1] = 0;
+ 457   2              dis_car[2] = 0;
+ 458   2              return 0;
+ 459   2          }
+ 460   1      }
+ 461          
+ 462          void make_car_road(void)
+ 463          {
+ 464   1        task = rand()%10;
+ 465   1        switch(task)
+ 466   1        {
+ 467   2          case 0:
+ 468   2            fire_pos[3] = 1;
+ 469   2            fire_pos[2] = 0;
+ 470   2            fire_pos[1] = 0;
+ 471   2            fire_pos[0] = 0;
+ 472   2          break;
+ 473   2            
+ 474   2          case 2:
+ 475   2            fire_pos[3] = 0;
+ 476   2            fire_pos[2] = 1;
+ 477   2            fire_pos[1] = 0;
+ 478   2            fire_pos[0] = 0;
+ 479   2          break;
+ 480   2                      
+ 481   2          case 3:
+ 482   2            fire_pos[3] = 0;
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 9   
+
+ 483   2            fire_pos[2] = 0;
+ 484   2            fire_pos[1] = 1;
+ 485   2            fire_pos[0] = 0;
+ 486   2          break;
+ 487   2                            
+ 488   2          case 4:
+ 489   2            fire_pos[3] = 0;
+ 490   2            fire_pos[2] = 0;
+ 491   2            fire_pos[1] = 0;
+ 492   2            fire_pos[0] = 1;
+ 493   2          break;
+ 494   2                                  
+ 495   2          case 5:
+ 496   2            fire_pos[3] = 1;
+ 497   2            fire_pos[2] = 1;
+ 498   2            fire_pos[1] = 0;
+ 499   2            fire_pos[0] = 0;
+ 500   2          break;
+ 501   2                                        
+ 502   2          case 6:
+ 503   2            fire_pos[3] = 1;
+ 504   2            fire_pos[2] = 0;
+ 505   2            fire_pos[1] = 1;
+ 506   2            fire_pos[0] = 0;
+ 507   2          break;
+ 508   2                                              
+ 509   2          case 7:
+ 510   2            fire_pos[3] = 1;
+ 511   2            fire_pos[2] = 0;
+ 512   2            fire_pos[1] = 0;
+ 513   2            fire_pos[0] = 1;
+ 514   2          break;
+ 515   2                                                    
+ 516   2          case 8:
+ 517   2            fire_pos[3] = 0;
+ 518   2            fire_pos[2] = 1;
+ 519   2            fire_pos[1] = 1;
+ 520   2            fire_pos[0] = 0;
+ 521   2          break;
+ 522   2                                                          
+ 523   2          case 9:
+ 524   2            fire_pos[3] = 0;
+ 525   2            fire_pos[2] = 1;
+ 526   2            fire_pos[1] = 0;
+ 527   2            fire_pos[0] = 1;
+ 528   2          break;
+ 529   2                                                                
+ 530   2          case 1:
+ 531   2            fire_pos[3] = 0;
+ 532   2            fire_pos[2] = 0;
+ 533   2            fire_pos[1] = 1;
+ 534   2            fire_pos[0] = 1;
+ 535   2          break;
+ 536   2          
+ 537   2          default:
+ 538   2            fire_pos[3] = 1;
+ 539   2            fire_pos[2] = 1;
+ 540   2            fire_pos[1] = 1;
+ 541   2            fire_pos[0] = 1;
+ 542   2        }
+ 543   1      }
+ 544          
+C51 COMPILER V9.60.7.0   MAIN                                                              10/08/2024 22:06:54 PAGE 10  
+
+ 545          
+ 546          //0:左边
+ 547          //1:右边
+ 548          void cor_dis(unsigned char dir)
+ 549          {
+ 550   1        switch(dir)
+ 551   1        {
+ 552   2          case 0:
+ 553   2            if(left_dis > lim_dis)
+ 554   2            {
+ 555   3              do{
+ 556   4                adjustDirection_1(1350,1350);
+ 557   4                get_pos();
+ 558   4              }while(left_dis > lim_dis);
+ 559   3            }   
+ 560   2          break;
+ 561   2        
+ 562   2          case 1:
+ 563   2            if(right_dis > lim_dis)
+ 564   2            {
+ 565   3              do{
+ 566   4                adjustDirection_1(1650,1650);
+ 567   4                get_pos();
+ 568   4              }while(right_dis > lim_dis);
+ 569   3            }
+ 570   2          break;
+ 571   2        }
+ 572   1      }
+ 573                
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1754    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     26       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
